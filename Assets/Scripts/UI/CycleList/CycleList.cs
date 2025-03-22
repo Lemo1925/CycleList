@@ -40,7 +40,7 @@ public class CycleList
 
     private int canShowNum;
     private float totalScroll;
-    private int startIndex, endIndex, itemIndex;
+    private int startIndex, endIndex;
     private List<CycleListItem> items;
     private List<CycleListData> dataList;
     
@@ -125,7 +125,6 @@ public class CycleList
             ? scrollRect.viewport.rect.height + (-content.anchoredPosition.y) 
             : scrollRect.viewport.rect.width + (-content.anchoredPosition.x);
         //       Item移动超过1个间隔  ||       右边有空位但是Item[^1]不是数据第^1位
-
         if (viewPortDelta > itemSpace || (endIndex < dataList.Count - 1 && rightestEdge < rightArea))
         {
             //item往左
