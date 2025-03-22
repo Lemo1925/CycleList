@@ -21,6 +21,7 @@ public struct CycleListSetting
     public List<CycleListData> dataList;
     
     public Action<CycleListItem, CycleListData> updateFunc;
+    public Func<CycleListData, float> onLayoutFunc;
 }
 
 public class CycleList
@@ -33,7 +34,8 @@ public class CycleList
    
     private bool isVertical;
     private float itemSpace;
-    
+    private int count;
+
     #endregion
     
     #region CycleList
@@ -49,10 +51,11 @@ public class CycleList
     private Vector2 scrollLastPosition;
     
     private Action<CycleListItem, CycleListData> updateFunc;
-    
+    public Func<CycleListData, float> onLayoutFunc;
+
     #endregion
-    
-    
+
+
     public CycleList(CycleListSetting setting)
     {
         this.setting = setting;
@@ -70,6 +73,7 @@ public class CycleList
         items = setting.items;
         dataList = setting.dataList;
         updateFunc = setting.updateFunc;
+        onLayoutFunc = setting.onLayoutFunc;
     }
 
     private void InitArgs()
@@ -77,6 +81,7 @@ public class CycleList
         startIndex = 0;
         isVertical = grid.isVertical;
         itemSpace = grid.itemSpace;
+        count = Mathf.Min(items.Count, dataList.Count); //需要的item数量
         canShowNum = isVertical
             ? Mathf.CeilToInt(scrollRect.GetComponent<RectTransform>().rect.height / itemSpace)
             : Mathf.CeilToInt(scrollRect.GetComponent<RectTransform>().rect.width / itemSpace);
@@ -90,26 +95,59 @@ public class CycleList
     public void SetItem(List<CycleListData> datalist)
     {
         dataList = datalist;
-        content.sizeDelta = isVertical
-            ? new Vector2(content.sizeDelta.x, dataList.Count * itemSpace)
-            : new Vector2(dataList.Count * itemSpace, content.sizeDelta.y);
+       
         scrollLastPosition = content.anchoredPosition;
         scrollRect.onValueChanged.AddListener(OnScroll);
         InitCycleList();
     }
-    
-    
+
+    private void InitCycleList()
+    {
+        var spacingOffset = 0f;
+        for (int i = 0; i < count; i++)
+        {
+            var dataIndex = startIndex + i;
+            var item = items[i];
+            item.data = dataList[dataIndex];
+            updateFunc(item, dataList[dataIndex]);
+            var spacing = onLayoutFunc == null ? itemSpace : onLayoutFunc(item.data);
+            item.gameObject.SetActive(true);
+            if (onLayoutFunc != null)
+            {
+                if (isVertical)
+                {
+                    item.transform.sizeDelta = new Vector2(item.transform.sizeDelta.x, spacing);
+                    item.transform.anchoredPosition = new Vector2(item.transform.anchoredPosition.x, spacingOffset);
+                }
+                else
+                {
+                    item.transform.sizeDelta = new Vector2(spacing, item.transform.sizeDelta.y);
+                    item.transform.anchoredPosition = new Vector2(spacingOffset, item.transform.anchoredPosition.y);
+                }
+                spacingOffset += spacing;
+            }
+            else
+            {
+                item.transform.anchoredPosition = isVertical
+                    ? new Vector2(item.transform.anchoredPosition.x, itemSpace * i)
+                    : new Vector2(itemSpace * i, item.transform.anchoredPosition.y);
+            }
+        }
+        CalculateContent();
+    }
+
     private void OnScroll(Vector2 scrollPosition)
     {
         var verticalDelta = scrollPosition.y - scrollLastPosition.y;
         var horizontalDelta = scrollPosition.x - scrollLastPosition.x; //左移是正的
         scrollLastPosition = scrollPosition;
         totalScroll = isVertical ? totalScroll + verticalDelta : totalScroll + horizontalDelta;
-        if ((totalScroll < 0 && items[0].itemData == dataList[0])  
-            || (totalScroll > 0 && items[^1].itemData == dataList[^1]) ) 
+        if ((totalScroll < 0 && items[0].data == dataList[0])  
+            || (totalScroll > 0 && items[^1].data == dataList[^1]) ) 
             return;
         
         DoScroll();
+        ReCalculateItem();
     }
 
     private void DoScroll()
@@ -123,7 +161,10 @@ public class CycleList
         float rightArea = isVertical 
             ? scrollRect.viewport.rect.height + (-content.anchoredPosition.y) 
             : scrollRect.viewport.rect.width + (-content.anchoredPosition.x);
-        //       Item移动超过1个间隔  ||       右边有空位但是Item[^1]不是数据第^1位
+        float leftestItemMove = isVertical
+            ? content.anchoredPosition.y + items[0].transform.anchoredPosition.y
+            : content.anchoredPosition.x + items[0].transform.anchoredPosition.x;
+        //       Item移动超过1个间隔          右边有空位但是Item[^1]不是数据第^1位
         if (viewPortDelta > itemSpace || (endIndex < dataList.Count - 1 && rightestEdge < rightArea))
         {
             //item往左
@@ -152,55 +193,89 @@ public class CycleList
                 }
             }
         }
-        else
+        //         右移1个间隔              左边有空位但是Item[0]不是数据第0位
+        else if (viewPortDelta < -itemSpace || (startIndex > 0 && leftestItemMove > 0))
         {
-            float leftestItemMove =
-                isVertical ? content.anchoredPosition.y + items[0].transform.anchoredPosition.y 
-                            : content.anchoredPosition.x + items[0].transform.anchoredPosition.x;
-            //         右移1个间隔          ||            左边有空位但是Item[0]不是数据第0位
-            if (viewPortDelta < -itemSpace || (startIndex > 0 && leftestItemMove > 0))
-            {
-                //item往右
-                
-                int moveIndex = Mathf.FloorToInt(Mathf.Abs(viewPortDelta) / itemSpace); //移动的次数，移动过快可能会跨Item
-                moveIndex = Mathf.Max(1, moveIndex); //至少一次
-                totalScroll = 0;
+            //item往右
+            //移动的次数，移动过快可能会跨Item
+            int moveIndex = Mathf.FloorToInt(Mathf.Abs(viewPortDelta) / itemSpace);
+            //至少一次
+            moveIndex = Mathf.Max(1, moveIndex); 
+            totalScroll = 0;
 
-                while (moveIndex-- > 0)
+            while (moveIndex-- > 0)
+            {
+                if (startIndex > 0 )
                 {
-                    if (startIndex > 0 )
-                    {
-                        var lastItem = items[^1];
-                        var newPos = isVertical
-                            ? new Vector2(lastItem.transform.anchoredPosition.x, 
-                                items[0].transform.anchoredPosition.y + itemSpace)
-                            : new Vector2(items[0].transform.anchoredPosition.x - itemSpace, 
-                                lastItem.transform.anchoredPosition.y);
-                        lastItem.transform.anchoredPosition = newPos;
-                        items.Remove(lastItem);
-                        items.Insert(0, lastItem);
-                        startIndex--;
-                        endIndex--;
-                        updateFunc(items[0], dataList[startIndex]);
-                    }
+                    var lastItem = items[^1];
+                    var newPos = isVertical
+                        ? new Vector2(lastItem.transform.anchoredPosition.x, 
+                            items[0].transform.anchoredPosition.y + itemSpace)
+                        : new Vector2(items[0].transform.anchoredPosition.x - itemSpace, 
+                            lastItem.transform.anchoredPosition.y);
+                    lastItem.transform.anchoredPosition = newPos;
+                    items.Remove(lastItem);
+                    items.Insert(0, lastItem);
+                    startIndex--;
+                    endIndex--;
+                    updateFunc(items[0], dataList[startIndex]);
+                      
                 }
             }
         }
     }
-    
 
-    private void InitCycleList()
+    private void ReCalculateItem()
     {
-        var count = Mathf.Min(items.Count, dataList.Count);
+        if (onLayoutFunc == null) 
+            return;
+        
+        var spacingOffset = 0f;
+        var startPos = items[0].data == dataList[0] 
+            ? Vector2.zero  // 如果是第一个数据就用（0，0）
+            : items[0].transform.anchoredPosition;
         for (int i = 0; i < count; i++)
         {
-            var dataIndex = startIndex + i;
             var item = items[i];
-            updateFunc(item, dataList[dataIndex]);
-            item.gameObject.SetActive(true);
-            item.transform.anchoredPosition = isVertical
-                ? new Vector2(item.transform.anchoredPosition.x, itemSpace * i)
-                : new Vector2(itemSpace * i, item.transform.anchoredPosition.y);
+            var spacing = onLayoutFunc(item.data);
+            if (isVertical)
+            {
+                item.transform.sizeDelta = new Vector2(item.transform.sizeDelta.x, spacing);
+                item.transform.anchoredPosition = new Vector2(item.transform.anchoredPosition.x, startPos.y - spacingOffset);
+            }
+            else
+            {
+                item.transform.sizeDelta = new Vector2(spacing, item.transform.sizeDelta.y);
+                item.transform.anchoredPosition = new Vector2(startPos.x + spacingOffset, item.transform.anchoredPosition.y);
+            }
+            spacingOffset += spacing;
         }
+    }
+
+    private void CalculateContent()
+    {
+        var contentSize = 0f;
+        var originPos = content.anchoredPosition;
+        if (onLayoutFunc != null)
+        {
+            for (int i = 0; i < count; i++)
+            { 
+                var item = items[i];
+                var newSize = onLayoutFunc(item.data);
+                // 重算content大小
+                contentSize += newSize;
+            }
+            // 把少算的长度补回来
+            contentSize += itemSpace * (dataList.Count - count);
+        }
+        else
+        {
+            contentSize = dataList.Count * itemSpace;
+        }
+
+        content.sizeDelta = isVertical
+            ? new Vector2(content.sizeDelta.x, contentSize)
+            : new Vector2(contentSize, content.sizeDelta.y);
+        content.anchoredPosition = originPos;
     }
 }

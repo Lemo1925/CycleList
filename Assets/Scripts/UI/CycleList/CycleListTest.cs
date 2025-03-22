@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,7 +9,7 @@ class CloneItem : CycleListItem
     public RectTransform transform { get; set; }
     public int index { get; set; }
     public Text textComp { get; set; }
-    public CycleListData itemData { get; set; }
+    public CycleListData data { get; set; }
 }
 
 class ItemData: CycleListData
@@ -100,13 +101,14 @@ public class CycleListTest : MonoBehaviour
             dataList = dataList,
             
             updateFunc = UpdateCycleList,
+            //onLayoutFunc = OnLayOut,
         };
 
         void UpdateCycleList(CycleListItem item, CycleListData data)
         {
             var _item = (CloneItem)item;
             var _data = (ItemData)data;
-            _item.itemData = _data;
+            _item.data = _data;
             _item.textComp.text = $"{_data.data}";
         }
         
@@ -114,5 +116,11 @@ public class CycleListTest : MonoBehaviour
         cycList.SetItem();
     }
 
-    
+    private float OnLayOut(CycleListData data)
+    {
+        var itemData = (ItemData)data;
+        if (itemData.data == 4)
+            return itemSpace + 20;
+        return itemSpace;
+    }
 }

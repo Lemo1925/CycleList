@@ -6,5 +6,5 @@ public interface CycleListItem
     public RectTransform transform { get; }
     public int index { get; }
     
-    public CycleListData itemData { get; }
+    public CycleListData data { get; set; }
 }
