@@ -74,7 +74,6 @@ public class CycleList
 
     private void InitArgs()
     {
-        itemIndex = 0;
         startIndex = 0;
         isVertical = grid.isVertical;
         itemSpace = grid.itemSpace;
