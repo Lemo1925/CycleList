@@ -132,17 +132,20 @@ public interface ICycleListItem
 1. **Item预设数量**: 建议预设 `可视区域/(Item高度+间距) + 2` 个Item
 2. **性能优化**: 避免在 `updateFunc` 中进行复杂计算
 3. **内存管理**: 及时清理不再使用的资源
-4. **数据更新**: 使用 `SetItem(List<ICycleListData>)` 方法更新数据
+4. **数据更新**: 使用 `SetItem()` 方法更新数据
 
 ## 🐛 常见问题
 
 **Q: 为什么Item显示不完整？**
+
 A: 检查Item预制体的数量是否足够，建议按照最佳实践设置
 
 **Q: 滚动卡顿怎么办？**
+
 A: 优化 `updateFunc` 回调函数，避免复杂操作
 
 **Q: 如何实现横向滚动？**
+
 A: 设置 `GridSetting.isVertical = false`
 
 ## 📄 许可证
