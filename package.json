@@ -1,0 +1,11 @@
+{
+  "name": "com.github.cyclelistcmp", 
+  "version": "0.0.1", 
+  "displayName": "CycleListCmp",
+  "description": "UI CycleList Component",
+  "unity": "2022.3",
+  "author": {
+    "name": "Lemo",
+    "email": "Mo_Lemo@outlook.com"
+  }
+}
