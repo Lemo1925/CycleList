@@ -118,7 +118,7 @@ namespace CycleListCmp
                     if (isVertical)
                     {
                         item.Transform.sizeDelta = new Vector2(item.Transform.sizeDelta.x, spacing);
-                        item.Transform.anchoredPosition = new Vector2(item.Transform.anchoredPosition.x, spacingOffset);
+                        item.Transform.anchoredPosition = new Vector2(item.Transform.anchoredPosition.x, -spacingOffset);
                     }
                     else
                     {
@@ -130,7 +130,7 @@ namespace CycleListCmp
                 else
                 {
                     item.Transform.anchoredPosition = isVertical
-                        ? new Vector2(item.Transform.anchoredPosition.x, itemSpace * i)
+                        ? new Vector2(item.Transform.anchoredPosition.x, -itemSpace * i)
                         : new Vector2(itemSpace * i, item.Transform.anchoredPosition.y);
                 }
             }
